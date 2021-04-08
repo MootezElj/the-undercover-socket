@@ -267,7 +267,8 @@ SocketIo.on('connection', socket => {
 
                     //Updating the room status
                     // since the game has started
-                    roomService.updateRoomStatusAndChosenWord(room.id, 'Game Started', chosenWord.id).then(res);
+                    roomService.updateRoomStatusAndChosenWord(room.id, 'Game Started', chosenWord.id).then(res =>
+                        console.log(res), error => console.log('err ',error));
 
 
                     let roomTracker = {
@@ -279,7 +280,11 @@ SocketIo.on('connection', socket => {
                         mrWhite: '',
                         undercover: '',
                         currentlyVoting: false,
-                        votes: []
+                        votes: [],
+                        preStartTime: 5,
+                        preFirstPlayerTime: 10,
+                        playerSpeakTime: 20,
+                        voteTime: 60
                     }
 
 
@@ -293,9 +298,8 @@ SocketIo.on('connection', socket => {
                     else
                         roomsPlayersTracker[roomTrackerIndex] = roomTracker;
 
-                    let round = 0;
-                    let timeLeft = 6;
-                    let beforeFirstPlayerTimer = false;
+                    let timeLeft = roomTracker.preStartTime*1 + 1*1;
+                    let isInbeforeFirstPlayerRound = true;
                     let playerIndex = 0;
                     let voteResult = false;
                     var phase = 'beforeWords';
@@ -304,27 +308,24 @@ SocketIo.on('connection', socket => {
                         timeLeft--;
                         if (timeLeft != 0)
                             SocketIo.to(room.joinId).emit('roundTime', { roomTime: timeLeft, index: playerIndex, toPlayPlayers: toPlayPlayers, votes: roomTracker.votes, phase: phase, mrWhite: roomTracker.mrWhite, undercover: roomTracker.undercover });
-
+                      
                         //If it's the first round
                         //First if to get in
-                        if (round == 0 && !beforeFirstPlayerTimer) {
+                        if (isInbeforeFirstPlayerRound) {
                             if (timeLeft == 0) {
                                 SocketIo.to(room.joinId).emit('gameStarted', room);
-                                timeLeft = 11;
+                                timeLeft = roomTracker.preFirstPlayerTime*1+1*1;
                                 //If the first's round timer ends we go to round 2
-                                beforeFirstPlayerTimer = true;
-                                phase = 'beforeFirstPlayer'
+                                isInbeforeFirstPlayerRound = false;
+                                phase = 'beforeFirstPlayer';
                             }
-
                         }
                         //If it's the first player we will keep decrimenting the time
                         // until it hits 0 we will start the round
-                        else if (beforeFirstPlayerTimer) {
+                        else if (!isInbeforeFirstPlayerRound) {
                             if (timeLeft == 0) {
-                                round = 1;
-                                //To change to 21
-                                timeLeft = 21;
-                                beforeFirstPlayerTimer = false;
+                                timeLeft = roomTracker.playerSpeakTime*1+1*1;   
+                                isInbeforeFirstPlayerRound = false;
                                 // we will go back to playing
                                 phase = 'playing';
                             }
@@ -335,7 +336,6 @@ SocketIo.on('connection', socket => {
                         else if (roomTracker.currentlyVoting) {
                             if ((timeLeft == 0) || (roomTracker.votes.length == roomTracker.toPlayPlayers.length)) {
                                 roomTracker.currentlyVoting = false;
-                                //To change to 21
 
                                 var maxUsername = '';
                                 var maxNb = 0;
@@ -446,7 +446,7 @@ SocketIo.on('connection', socket => {
 
                             if (timeLeft == 0) {
                                 //21
-                                timeLeft = 21;
+                                timeLeft = roomTracker.playerSpeakTime*1+1*1;
                                 playerIndex++;
                                 if (playerIndex == toPlayPlayers.length - 1)
                                     phase = 'lastPlayerPlaying'
@@ -454,7 +454,7 @@ SocketIo.on('connection', socket => {
                             if (playerIndex == toPlayPlayers.length) {
                                 roomTracker.currentlyVoting = true;
                                 //to change to 61
-                                timeLeft = 61;
+                                timeLeft = roomTracker.voteTime*1+1*1;
                                 phase = 'voting'
                             }
                         }
