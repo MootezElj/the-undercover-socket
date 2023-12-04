@@ -10,10 +10,11 @@ const Utils = require('./utils/Utils');
 
 var roomsPlayersTracker = [];
 
+
 SocketIo.on('connection', socket => {
     console.log('connected to socket !');
-    socket.on('loginUserRequest', ({ username, password }) => {
-        playerService.loginPlayer({ username: username, password: password }).then(res => {
+    socket.on('loginUserRequest', ({username,password}) => {
+        playerService.loginPlayer({username:username,password:password}).then(res => {
 
             authService.authPlayer(username, res.id).then(token => {
                 if (token) {
@@ -169,7 +170,7 @@ SocketIo.on('connection', socket => {
         }
     });
 
-    socket.on('playerReadyUready', ({ token, isReady, room, playAgain }) => {
+    socket.on('playerReadyUready', ({ token, isReady, room,playAgain }) => {
 
         if (authService.checkPlayerToken(token)) {
             var usernamePlayer = authService.getPlayerByToken(token).username;
@@ -177,14 +178,14 @@ SocketIo.on('connection', socket => {
             roomService.playerReadyUnready(playerId, room.id, usernamePlayer, isReady).then(player => {
                 var index = room.players.map(function (p) { return p.username; }).indexOf(usernamePlayer);
                 room.players[index] = player;
-                if (playAgain) {
-                    roomService.allPlayersNotReady(room.id).then(res => {
+                if (playAgain){
+                    roomService.allPlayersNotReady(room.id).then(res =>{
                         room.allPlayersAreReady = false;
                         room.status = 'Waiting';
-                        for (let player of room.players) {
+                        for (let player of room.players){
                             roomService.playerReadyUnready(player.id, room.id, player.username, false).then();
                         }
-                        SocketIo.to(room.joinId).emit('playAgainNotReady', { username: usernamePlayer, room: room });
+                        SocketIo.to(room.joinId).emit('playAgainNotReady',{username:usernamePlayer,room:room});
                     })
                 }
                 else {
@@ -226,7 +227,7 @@ SocketIo.on('connection', socket => {
                     var wordIndex;
                     do {
                         wordIndex = Utils.randomIntFromInterval(1, words.length) - 1;
-                    } while (room.chosenWords.findIndex(word => word.id == words[wordIndex].id) > -1);
+                    } while (room.chosenWords.findIndex(word => word.id == words[wordIndex].id)>-1);
                     var chosenWord = words[wordIndex];
 
                     //generating the undercover player index
@@ -235,12 +236,12 @@ SocketIo.on('connection', socket => {
                     //generating MrWhite index
                     //it has to be different from the undercover index
                     do {
-                        var mrWhiteIndex = Utils.randomIntFromInterval(1, room.players.length) - 1;
+                       var mrWhiteIndex = Utils.randomIntFromInterval(1, room.players.length) - 1;
                     } while (mrWhiteIndex == undercoverIndex);
 
 
-                    for (let player of room.players) {
-                        roomService.playerReadyUnready(player.id, room.id, player.username, false).then(res => {
+                    for(let player of room.players) {
+                        roomService.playerReadyUnready(player.id, room.id, player.username, false).then(res=>{
                         });
                     }
 
@@ -267,8 +268,9 @@ SocketIo.on('connection', socket => {
 
                     //Updating the room status
                     // since the game has started
-                    roomService.updateRoomStatusAndChosenWord(room.id, 'Game Started', chosenWord.id).then(res =>
-                        console.log(res), error => console.log('err ',error));
+                    roomService.updateRoomStatusAndChosenWord(room.id, 'Game Started', chosenWord.id).then(res => {
+
+                    });
 
 
                     let roomTracker = {
@@ -280,11 +282,7 @@ SocketIo.on('connection', socket => {
                         mrWhite: '',
                         undercover: '',
                         currentlyVoting: false,
-                        votes: [],
-                        preStartTime: 5,
-                        preFirstPlayerTime: 10,
-                        playerSpeakTime: 20,
-                        voteTime: 60
+                        votes: []
                     }
 
 
@@ -293,13 +291,14 @@ SocketIo.on('connection', socket => {
                     let roomTrackerIndex;
                     //Room initilization
                     roomTrackerIndex = roomsPlayersTracker.findIndex(r => r.roomId == room.id);
-                    if (roomTrackerIndex == -1)
+                    if (roomTrackerIndex==-1)
                         roomsPlayersTracker.push(roomTracker);
                     else
-                        roomsPlayersTracker[roomTrackerIndex] = roomTracker;
+                        roomsPlayersTracker[roomTrackerIndex]=roomTracker;
 
-                    let timeLeft = roomTracker.preStartTime*1 + 1*1;
-                    let isInbeforeFirstPlayerRound = true;
+                    let round = 0;
+                    let timeLeft = 6;
+                    let beforeFirstPlayerTimer = false;
                     let playerIndex = 0;
                     let voteResult = false;
                     var phase = 'beforeWords';
@@ -307,25 +306,28 @@ SocketIo.on('connection', socket => {
                     let gameInterval = setInterval(() => {
                         timeLeft--;
                         if (timeLeft != 0)
-                            SocketIo.to(room.joinId).emit('roundTime', { roomTime: timeLeft, index: playerIndex, toPlayPlayers: toPlayPlayers, votes: roomTracker.votes, phase: phase, mrWhite: roomTracker.mrWhite, undercover: roomTracker.undercover });
-                      
+                            SocketIo.to(room.joinId).emit('roundTime', { roomTime: timeLeft, index: playerIndex, toPlayPlayers: toPlayPlayers, votes: roomTracker.votes, phase: phase ,mrWhite:roomTracker.mrWhite,undercover:roomTracker.undercover});
+
                         //If it's the first round
                         //First if to get in
-                        if (isInbeforeFirstPlayerRound) {
+                        if (round == 0 && !beforeFirstPlayerTimer) {
                             if (timeLeft == 0) {
                                 SocketIo.to(room.joinId).emit('gameStarted', room);
-                                timeLeft = roomTracker.preFirstPlayerTime*1+1*1;
+                                timeLeft = 11;
                                 //If the first's round timer ends we go to round 2
-                                isInbeforeFirstPlayerRound = false;
-                                phase = 'beforeFirstPlayer';
+                                beforeFirstPlayerTimer = true;
+                                phase = 'beforeFirstPlayer'
                             }
+
                         }
                         //If it's the first player we will keep decrimenting the time
                         // until it hits 0 we will start the round
-                        else if (!isInbeforeFirstPlayerRound) {
+                        else if (beforeFirstPlayerTimer) {
                             if (timeLeft == 0) {
-                                timeLeft = roomTracker.playerSpeakTime*1+1*1;   
-                                isInbeforeFirstPlayerRound = false;
+                                round = 1;
+                                //To change to 21
+                                timeLeft = 17;
+                                beforeFirstPlayerTimer = false;
                                 // we will go back to playing
                                 phase = 'playing';
                             }
@@ -334,98 +336,81 @@ SocketIo.on('connection', socket => {
 
 
                         else if (roomTracker.currentlyVoting) {
-                            if ((timeLeft == 0) || (roomTracker.votes.length == roomTracker.toPlayPlayers.length)) {
+                            if ((timeLeft == 0) || (roomTracker.votes.length==roomTracker.toPlayPlayers.length)) {
                                 roomTracker.currentlyVoting = false;
+                                //To change to 21
 
                                 var maxUsername = '';
                                 var maxNb = 0;
                                 var nb;
-                                var username = '';
+                                var username='';
 
-                                if (roomTracker.votes.length > 0) {
-                                    for (let i = 0; i < roomTracker.votes.length; i++) {
-                                        nb = 0;
-                                        for (let j = 0; j < roomTracker.votes.length; j++) {
-                                            if (j != i)
-                                                // If there is a player who has the max nb of pick
-                                                // We will be pass him
-                                                // If not (If we have [zexy,supslayer]) we pick  random from roomTracker.votes
-                                                // in other words we pick a random player from [zexy,supslayer]
-                                                if (roomTracker.votes[i].elected == roomTracker.votes[j].elected) {
-                                                    nb++;
-                                                    username = roomTracker.votes[j].elected;
-                                                }
+                                if (roomTracker.votes.length>0)
 
-                                        }
-                                        if ((nb > maxNb) && (username != maxUsername) && (username != undefined && maxUsername != undefined)) {
-                                            maxNb = nb;
-                                            maxUsername = username;
-                                        }
+                                for (let i = 0; i < roomTracker.votes.length; i++) {
+                                    nb = 0;
+                                    for (let j = 0; j < roomTracker.votes.length; j++) {
+                                        if (j != i)
+                                            // If there is a player who has the max nb of pick
+                                            // We will be pass him
+                                            // If not (If we have [zexy,supslayer]) we pick  random from roomTracker.votes
+                                            // in other words we pick a random player from [zexy,supslayer]
+                                            if (roomTracker.votes[i].elected == roomTracker.votes[j].elected) {
+                                                nb++;
+                                                username = roomTracker.votes[j].elected;
+                                            }
+
+                                    }
+                                    if ( (nb > maxNb) && (username != maxUsername) && (username != undefined && maxUsername != undefined)) {
+                                        maxNb = nb;
+                                        maxUsername = username;
+                                    }
+                                }
+
+                                if (maxUsername=='' && roomTracker.votes.length>0){
+                                    let randomPlayerIndex= Utils.randomIntFromInterval(1, roomTracker.votes.length) - 1;
+                                    maxUsername=roomTracker.votes[randomPlayerIndex].elected;
+                                }
+                                playerService.getPlayerByUsername(maxUsername).then(p => {
+                                    roomTracker.toPlayPlayers
+                                        .splice(roomTracker
+                                            .toPlayPlayers.findIndex(player => player.username == maxUsername), 1);
+
+                                    var role = 'standard'
+                                    if (p.isMrWhite) {
+                                        roomTracker.mrWhite = maxUsername;
+                                        role = 'mrWhite';
+                                    }
+                                    else if (p.isUndercover) {
+                                        roomTracker.undercover = maxUsername;
+                                        role = 'undercover';
                                     }
 
 
-                                    if (maxUsername == '' && roomTracker.votes.length > 0) {
-                                        let randomPlayerIndex = Utils.randomIntFromInterval(1, roomTracker.votes.length) - 1;
-                                        maxUsername = roomTracker.votes[randomPlayerIndex].elected;
+                                    let win;
+
+                                    if ((roomTracker.mrWhite != '' && roomTracker.undercover != '') || (roomTracker.toPlayPlayers.length < 3)) {
+                                        win = (roomTracker.mrWhite != '' && roomTracker.undercover != '' ? true : false);
+                                        roomService.updateRoomStatus(roomTracker.roomId,'Game Ended').then(res=>{
+                                            clearInterval(gameInterval);
+                                            SocketIo.to(room.joinId).emit('gameEnded', { stdWin: win })
+                                        });
+
                                     }
-                                    playerService.getPlayerByUsername(maxUsername).then(p => {
-                                        if (maxUsername != 'none') {
-                                            roomTracker.toPlayPlayers
-                                                .splice(roomTracker
-                                                    .toPlayPlayers.findIndex(player => player.username == maxUsername), 1);
 
-                                            var role = 'standard'
-                                            if (p.isMrWhite) {
-                                                roomTracker.mrWhite = maxUsername;
-                                                role = 'mrWhite';
-                                            }
-                                            else if (p.isUndercover) {
-                                                roomTracker.undercover = maxUsername;
-                                                role = 'undercover';
-                                            }
+                                    else {
+                                        voteResult = true;
+                                        phase = 'voteResult';
+                                        timeLeft = 11;
+                                        playerIndex = 0;
+                                        SocketIo.to(room.joinId).emit('voteResult', { role: role, username: maxUsername });
+                                    }
+                                })
 
-
-                                            let win;
-
-                                            if ((roomTracker.mrWhite != '' && roomTracker.undercover != '') || (roomTracker.toPlayPlayers.length < 3)) {
-                                                win = (roomTracker.mrWhite != '' && roomTracker.undercover != '' ? true : false);
-                                                roomService.updateRoomStatus(roomTracker.roomId, 'Game Ended').then(res => {
-                                                    clearInterval(gameInterval);
-                                                    SocketIo.to(room.joinId).emit('gameEnded', { stdWin: win })
-                                                });
-
-                                            }
-
-                                            else {
-                                                voteResult = true;
-                                                phase = 'voteResult';
-                                                timeLeft = 11;
-                                                playerIndex = 0;
-                                                SocketIo.to(room.joinId).emit('voteResult', { role: role, username: maxUsername });
-                                            }
-                                        }
-                                        else {
-                                            voteResult = true;
-                                            phase = 'voteResult';
-                                            timeLeft = 11;
-                                            playerIndex = 0;
-                                            SocketIo.to(room.joinId).emit('voteResult', { role: 'none', username: 'none' });
-                                        }
-                                    })
-
-                                    // we will go back to playing
-                                    roomTrackerIndex = roomsPlayersTracker.findIndex(r => r.roomId == room.id);
-                                    roomTracker.votes = [];
-                                    roomsPlayersTracker[roomTrackerIndex].votes = [];
-                                }
-
-                                else if (roomTracker.votes.length == 0) {
-                                    voteResult = true;
-                                    phase = 'voteResult';
-                                    timeLeft = 11;
-                                    playerIndex = 0;
-                                    SocketIo.to(room.joinId).emit('voteResult', { role: 'none', username: 'none' });
-                                }
+                                // we will go back to playing
+                                roomTrackerIndex = roomsPlayersTracker.findIndex(r => r.roomId == room.id);
+                                roomTracker.votes = [];
+                                roomsPlayersTracker[roomTrackerIndex].votes = [];
 
 
 
@@ -438,7 +423,7 @@ SocketIo.on('connection', socket => {
                                 maxNb = 0;
                                 phase = 'playing';
                                 //to change to 21
-                                timeLeft = 21;
+                                timeLeft = 11;
                             }
                         }
 
@@ -446,7 +431,7 @@ SocketIo.on('connection', socket => {
 
                             if (timeLeft == 0) {
                                 //21
-                                timeLeft = roomTracker.playerSpeakTime*1+1*1;
+                                timeLeft = 18;
                                 playerIndex++;
                                 if (playerIndex == toPlayPlayers.length - 1)
                                     phase = 'lastPlayerPlaying'
@@ -454,12 +439,12 @@ SocketIo.on('connection', socket => {
                             if (playerIndex == toPlayPlayers.length) {
                                 roomTracker.currentlyVoting = true;
                                 //to change to 61
-                                timeLeft = roomTracker.voteTime*1+1*1;
+                                timeLeft = 36;
                                 phase = 'voting'
                             }
                         }
 
-                    }, 1000);
+                    }, 200);
 
 
 
@@ -494,41 +479,42 @@ SocketIo.on('connection', socket => {
     socket.on('getPlayerRoles', ({ playerToken, room }) => {
         if (authService.checkPlayerToken(playerToken)) {
             let playersAndRoles = [];
-            playerService.getPlayers().then(players => {
-                for (let player of players) {
-                    if (room.players.findIndex(p => p.username == player.username) > -1) {
-                        playersAndRoles.push({
-                            username: player.username,
-                            isUndercover: player.isUndercover,
-                            isMrWhite: player.isMrWhite
-                        });
-                    }
-                }
-                SocketIo.to(room.joinId).emit('playersAndRole', playersAndRoles)
+            playerService.getPlayers().then(players=>{
+               for (let player of players){
+                   if (room.players.findIndex(p=>p.username==player.username)>-1){
+                       playersAndRoles.push({
+                           username:player.username,
+                           isUndercover: player.isUndercover,
+                           isMrWhite: player.isMrWhite
+                       });
+                   }
+               }
+                   SocketIo.to(room.joinId).emit('playersAndRole',playersAndRoles)
             });
 
 
 
         }
 
-    });
+        });
 
-    socket.on('checkAvailableUsername', username => {
-        playerService.getPlayerByUsername(username).then(res => {
-            var available = false;
-            if (res == 'User not found')
-                available = true;
-            socket.emit('usernameAvailable', available);
-        }
-        ).catch(err => {
-            socket.emit('usernameAvailable', true);
+    socket.on('checkAvailableUsername',username=>{
+        playerService.getPlayerByUsername(username).then(res=> {
+            var available=false;
+            console.log(res)
+                if (res == 'User not found')
+                    available=true;
+                socket.emit('usernameAvailable',available);
+                }
+            ).catch(err=>{
+            socket.emit('usernameAvailable',true);
         })
     });
 
-    socket.on('createAccount', ({ username, email, password }) => {
-        playerService.createPlayer({ username, email, password }).then(res => {
+    socket.on('createAccount',({username,email,password})=>{
+        playerService.createPlayer({username,email,password}).then(res=> {
             socket.emit('accountCreated');
-        }).catch(err => {
+        }).catch(err=>{
             console.log(err);
         })
     });

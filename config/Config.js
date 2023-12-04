@@ -1,8 +1,3 @@
 module.exports = {
-    'secret' : 'Hyq*^10r1lOq.,J71KA',
-    backEndURL : 'localhost:3000'
+    'secret' : 'Hyq*^10r1lOq.,J71KA'
 };
-
-
-
-// the-undercover-back-end.herokuapp.com
