@@ -326,7 +326,7 @@ SocketIo.on('connection', socket => {
                             if (timeLeft == 0) {
                                 round = 1;
                                 //To change to 21
-                                timeLeft = 17;
+                                timeLeft = 21;
                                 beforeFirstPlayerTimer = false;
                                 // we will go back to playing
                                 phase = 'playing';
@@ -338,7 +338,6 @@ SocketIo.on('connection', socket => {
                         else if (roomTracker.currentlyVoting) {
                             if ((timeLeft == 0) || (roomTracker.votes.length==roomTracker.toPlayPlayers.length)) {
                                 roomTracker.currentlyVoting = false;
-                                //To change to 21
 
                                 var maxUsername = '';
                                 var maxNb = 0;
@@ -423,7 +422,7 @@ SocketIo.on('connection', socket => {
                                 maxNb = 0;
                                 phase = 'playing';
                                 //to change to 21
-                                timeLeft = 11;
+                                timeLeft = 21;
                             }
                         }
 
@@ -439,12 +438,12 @@ SocketIo.on('connection', socket => {
                             if (playerIndex == toPlayPlayers.length) {
                                 roomTracker.currentlyVoting = true;
                                 //to change to 61
-                                timeLeft = 36;
+                                timeLeft = 61;
                                 phase = 'voting'
                             }
                         }
 
-                    }, 200);
+                    }, 1000);
 
 
 
